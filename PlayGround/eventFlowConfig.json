@@ -1,0 +1,46 @@
+{
+  "inputs": [
+    {
+      "type": "Trace",
+      "traceLevel": "Warning"
+    },
+    {
+      "type": "Microsoft.Extensions.Logging"
+    },
+    {
+      "type": "EventSource",
+      "sources": [
+        {
+          "providerName": "PlayGround"
+        },
+        {
+          // Workaround for https://github.com/Azure/diagnostics-eventflow/issues/422#issuecomment-1786215019
+          "disabledProviderNamePrefix": "System."
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "type": "StdOutput"
+    },
+    {
+      "type": "BigQueryStorage",
+      "projectId": "<projectId>",
+      "datasetId": "<datasetId>",
+      "tableId": "playground_{yyyyMMdd}",
+      "timeZoneId": "Tokyo Standard Time",
+      "tableSchemaFile": ".\\tableSchema.json",
+      "mapperQualifiedTypeName": "PlayGround.EventRecordProtobufMessageMapper, PlayGround",
+      "autoCreateTable": true
+    }
+  ],
+  "schemaVersion": "2016-08-11",
+  "extensions": [
+    {
+      "category": "outputFactory",
+      "type": "BigQueryStorage",
+      "qualifiedTypeName": "Mamemaki.EventFlow.Outputs.BigQuery.Storage.BigQueryStorageOutputFactory, Mamemaki.EventFlow.Outputs.BigQuery.Storage"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+﻿// gen: protoc -I=./protobuf --csharp_out=./protobuf_gen --csharp_opt=file_extension=.pb.g.cs ./protobuf/event_record.proto
+syntax = "proto2";
+option csharp_namespace = "PlayGround.Protobuf";
+
+message EventRecord {
+  required int64 Timestamp = 1;
+  required string Message = 2;
+  optional int32 UserId = 3;
+  optional string MachineName = 4;
+  optional string TaskName = 5;
+}
