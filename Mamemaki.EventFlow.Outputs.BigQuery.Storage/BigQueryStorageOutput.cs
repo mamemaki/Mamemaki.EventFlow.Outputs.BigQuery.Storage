@@ -282,6 +282,7 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
                 if (!await IsTableExistsAsync(TableIdExpanded, cancellationToken))
                 {
                     await CreateTableAsync(TableIdExpanded, cancellationToken);
+                    await WaitForCreateTableCompletedAsync(TableIdExpanded, cancellationToken);
                 }
                 _NeedCheckTableExists = false;
             }
@@ -311,6 +312,19 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
             catch (Exception)
             {
                 throw;
+            }
+        }
+
+        async Task WaitForCreateTableCompletedAsync(string tableId, CancellationToken cancellationToken)
+        {
+            var retry = 1;
+            while (retry < _BackOff.MaxNumOfRetries)
+            {
+                if (await IsTableExistsAsync(tableId, cancellationToken))
+                    return;
+
+                retry++;
+                await Task.Delay(_BackOff.GetNextBackOff(retry));
             }
         }
 
