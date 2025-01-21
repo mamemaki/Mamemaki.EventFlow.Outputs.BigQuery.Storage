@@ -6,13 +6,13 @@
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
     <Version>1.0.0</Version>
-    <PackageProjectUrl>https://github.com/tsu1980/diagnostics-eventflow-bigquery-storage</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/mamemaki/Mamemaki.EventFlow.Outputs.BigQuery.Storage</PackageProjectUrl>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Tsuyoshi Sumiyoshi</Authors>
     <Description>A custom output for Microsoft.Diagnostics.EventFlow to insert events into Google BigQuery</Description>
     <PackageReleaseNotes>Initial version</PackageReleaseNotes>
-    <PackageIconUrl>https://github.com/tsu1980/diagnostics-eventflow-bigquery-storage/raw/master/images/logo.png</PackageIconUrl>
-    <RepositoryUrl>https://github.com/tsu1980/diagnostics-eventflow-bigquery-storage</RepositoryUrl>
+    <PackageIconUrl>https://github.com/mamemaki/Mamemaki.EventFlow.Outputs.BigQuery.Storage/raw/master/images/logo.png</PackageIconUrl>
+    <RepositoryUrl>https://github.com/mamemaki/Mamemaki.EventFlow.Outputs.BigQuery.Storage</RepositoryUrl>
     <Copyright>Copyright (c) 2025, Mamemaki, Inc and collaborators. All rights reserved</Copyright>
     <Company>Mamemaki, Inc</Company>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
