@@ -411,13 +411,12 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
                 ProtoRows = new AppendRowsRequest.Types.ProtoData
                 {
                     Rows = new ProtoRows { SerializedRows = { eventRecord.ToByteString() } }
-                }
+                },
+                WriteStreamAsWriteStreamName = new WriteStreamName(Config.ProjectId, Config.DatasetId, TableIdExpanded, "_default"),
             };
             if (_NeedWriteSchema)
             {
                 request.ProtoRows.WriterSchema = new ProtoSchema { ProtoDescriptor = _ProtobufMessageMapper.GetDescriptorProto() };
-                var streamName = new WriteStreamName(Config.ProjectId, Config.DatasetId, TableIdExpanded, "_default");
-                request.WriteStreamAsWriteStreamName = streamName;
                 _NeedWriteSchema = false;
             }
             return request;
