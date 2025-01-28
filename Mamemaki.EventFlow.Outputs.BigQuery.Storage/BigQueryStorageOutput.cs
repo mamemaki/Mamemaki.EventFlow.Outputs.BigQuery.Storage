@@ -152,6 +152,30 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
             }
         }
 
+        void HandleError(Exception ex, string message = null)
+        {
+            // We ignore these errors
+            if (!ex.Message.Contains("Cannot route on empty project id") &&     // It occurs when exiting
+                !ex.Message.Contains("Permission 'TABLES_UPDATE_DATA' denied")) // It occurs when table does not exists
+                return;
+
+            if (ex.Message.Contains("The HTTP/2 server reset the stream"))
+            {
+                // It is a stream reset error when no data sending for a while.
+                // https://github.com/grpc/grpc-node/issues/1747
+                return;
+            }
+
+            if (message == null)
+                message = "Failed to write events to Bq";
+
+            ErrorHandlingPolicies.HandleOutputTaskError(ex, () =>
+            {
+                string errorMessage = $"{nameof(BigQueryStorageOutput)}: {message}." + Environment.NewLine + ex.ToString();
+                this.healthReporter.ReportProblem(errorMessage, EventFlowContextIdentifiers.Output);
+            });
+        }
+
         async Task ProcessResponsesAsync()
         {
             var responses = _AppendRowsStream.GetResponseStream();
@@ -166,26 +190,9 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
                     }
                 }
             }
-            catch (Grpc.Core.RpcException ex)
-            {
-                // We ignore these errors
-                if (!ex.Message.Contains("Cannot route on empty project id") &&     // It occurs when exiting
-                    !ex.Message.Contains("Permission 'TABLES_UPDATE_DATA' denied")) // It occurs when table does not exists
-                {
-                    ErrorHandlingPolicies.HandleOutputTaskError(ex, () =>
-                    {
-                        string errorMessage = nameof(BigQueryStorageOutput) + ": Failed to write events to Bq." + Environment.NewLine + ex.ToString();
-                        this.healthReporter.ReportWarning(errorMessage, EventFlowContextIdentifiers.Output);
-                    });
-                }
-            }
             catch (Exception ex)
             {
-                ErrorHandlingPolicies.HandleOutputTaskError(ex, () =>
-                {
-                    string errorMessage = nameof(BigQueryStorageOutput) + ": Failed to write events to Bq." + Environment.NewLine + ex.ToString();
-                    this.healthReporter.ReportWarning(errorMessage, EventFlowContextIdentifiers.Output);
-                });
+                HandleError(ex);
             }
             finally
             {
@@ -206,11 +213,7 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
                 }
                 catch (Exception ex)
                 {
-                    ErrorHandlingPolicies.HandleOutputTaskError(ex, () =>
-                    {
-                        string errorMessage = nameof(BigQueryStorageOutput) + ": Failed to write events to Bq." + Environment.NewLine + ex.ToString();
-                        this.healthReporter.ReportWarning(errorMessage, EventFlowContextIdentifiers.Output);
-                    });
+                    HandleError(ex);
                 }
                 if (_ProcessResponsesTask != null)
                 {
@@ -252,17 +255,9 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
 
                 this.healthReporter.ReportHealthy();
             }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
             catch (Exception ex)
             {
-                ErrorHandlingPolicies.HandleOutputTaskError(ex, () =>
-                {
-                    string errorMessage = nameof(BigQueryStorageOutput) + ": Failed to write events to Bq." + Environment.NewLine + ex.ToString();
-                    this.healthReporter.ReportWarning(errorMessage, EventFlowContextIdentifiers.Output);
-                });
+                HandleError(ex);
             }
         }
 
