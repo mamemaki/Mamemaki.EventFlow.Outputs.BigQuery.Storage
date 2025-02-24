@@ -157,12 +157,16 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
             // We ignore these errors
             if (!ex.Message.Contains("Cannot route on empty project id") &&     // It occurs when exiting
                 !ex.Message.Contains("Permission 'TABLES_UPDATE_DATA' denied")) // It occurs when table does not exists
+            {
+                this.healthReporter.ReportHealthy($"Error ignored." + Environment.NewLine + ex.ToString());
                 return;
+            }
 
             if (ex.Message.Contains("The HTTP/2 server reset the stream"))
             {
                 // It is a stream reset error when no data sending for a while.
                 // https://github.com/grpc/grpc-node/issues/1747
+                this.healthReporter.ReportHealthy($"Error ignored." + Environment.NewLine + ex.ToString());
                 return;
             }
 
