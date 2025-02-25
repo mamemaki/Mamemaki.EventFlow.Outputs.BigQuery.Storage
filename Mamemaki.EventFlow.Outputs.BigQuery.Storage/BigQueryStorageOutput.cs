@@ -30,8 +30,11 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
         private IProtobufMessageMapper _ProtobufMessageMapper;
         private BigqueryService _BQSvc;
         private IBackOff _BackOff;
+        private BigQueryWriteClient _BigQueryWriteClient;
         private BigQueryWriteClient.AppendRowsStream _AppendRowsStream;
         private Task _ProcessResponsesTask;
+        private bool _NeedReconnectStream;
+        private readonly SemaphoreSlim _ReconnectStreamLock = new SemaphoreSlim(1, 1);
 
         public Google.Apis.Bigquery.v2.Data.TableSchema TableSchema { get; private set; }
 
@@ -134,9 +137,8 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
             });
             _BackOff = new ExponentialBackOff();
 
-            var client = BigQueryWriteClient.Create();
-            _AppendRowsStream = client.AppendRows();
-            _ProcessResponsesTask = Task.Run(ProcessResponsesAsync);
+            _BigQueryWriteClient = BigQueryWriteClient.Create();
+            OpenStream();
         }
 
         IProtobufMessageMapper CreateProtobufMessageMapper()
@@ -180,6 +182,49 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
             });
         }
 
+        /// <summary>
+        /// Reconnect the stream if stream closed
+        /// </summary>
+        /// <param name="error"></param>
+        /// <param name="retryCnt"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns>true if the stream reconnected</returns>
+        async Task<bool> ReconnectIfDiconnectedAsync(Exception error, int retryCnt, CancellationToken cancellationToken)
+        {
+            if (!error.Message.Contains("Closing the stream because it has been inactive for "))
+                return false;
+            _NeedReconnectStream = true;
+
+            // Only one thread at a time can execute the table creating process
+            await _ReconnectStreamLock.WaitAsync(cancellationToken);
+            try
+            {
+                if (retryCnt > 10)
+                    throw new Exception("Retry over");
+
+                if (!_NeedReconnectStream)
+                    return true;
+
+                // Reconnect the stream
+                this.healthReporter.ReportHealthy("Reconnect the stream cause stream closed.");
+                CloseStream();
+                OpenStream();
+                _NeedWriteSchema = true;
+                _NeedReconnectStream = false;
+                this.healthReporter.ReportHealthy("Stream reconnected.");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                HandleError(ex);
+            }
+            finally
+            {
+                _ReconnectStreamLock.Release();
+            }
+            return false;
+        }
+
         async Task ProcessResponsesAsync()
         {
             var responses = _AppendRowsStream.GetResponseStream();
@@ -207,7 +252,16 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
             }
         }
 
-        public void Dispose()
+        private void OpenStream()
+        {
+            if (_AppendRowsStream != null)
+                throw new Exception("Stream opend already");
+
+            _AppendRowsStream = _BigQueryWriteClient.AppendRows();
+            _ProcessResponsesTask = Task.Run(ProcessResponsesAsync);
+        }
+
+        private void CloseStream()
         {
             if (_AppendRowsStream != null)
             {
@@ -229,6 +283,12 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
                 _AppendRowsStream.Dispose();
                 _AppendRowsStream = null;
             }
+        }
+
+        public void Dispose()
+        {
+            CloseStream();
+
             if (_BQSvc != null)
             {
                 _BQSvc.Dispose();
@@ -244,6 +304,8 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
                 return;
             }
 
+        RETRY:
+            int retryCnt = 0;
             try
             {
                 ExpandTableIdIfNecessary();
@@ -261,6 +323,10 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
             }
             catch (Exception ex)
             {
+                if (await ReconnectIfDiconnectedAsync(ex, retryCnt++, cancellationToken))
+                {
+                    goto RETRY;
+                }
                 HandleError(ex);
             }
         }
