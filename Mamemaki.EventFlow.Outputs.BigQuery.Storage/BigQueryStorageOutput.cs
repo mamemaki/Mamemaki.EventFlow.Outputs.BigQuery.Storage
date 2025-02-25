@@ -155,10 +155,10 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
         void HandleError(Exception ex, string message = null)
         {
             // We ignore these errors
-            if (!ex.Message.Contains("Cannot route on empty project id") &&     // It occurs when exiting
-                !ex.Message.Contains("Permission 'TABLES_UPDATE_DATA' denied")) // It occurs when table does not exists
+            if (ex.Message.Contains("Cannot route on empty project id") ||     // It occurs when exiting
+                ex.Message.Contains("Permission 'TABLES_UPDATE_DATA' denied")) // It occurs when table does not exists
             {
-                this.healthReporter.ReportHealthy($"Error ignored." + Environment.NewLine + ex.ToString());
+                this.healthReporter.ReportHealthy("Error ignored." + Environment.NewLine + ex.ToString());
                 return;
             }
 
@@ -166,7 +166,7 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
             {
                 // It is a stream reset error when no data sending for a while.
                 // https://github.com/grpc/grpc-node/issues/1747
-                this.healthReporter.ReportHealthy($"Error ignored." + Environment.NewLine + ex.ToString());
+                this.healthReporter.ReportHealthy("Error ignored." + Environment.NewLine + ex.ToString());
                 return;
             }
 
