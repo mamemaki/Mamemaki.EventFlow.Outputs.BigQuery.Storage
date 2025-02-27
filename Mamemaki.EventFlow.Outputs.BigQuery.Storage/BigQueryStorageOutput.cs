@@ -191,7 +191,9 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
         /// <returns>true if the stream reconnected</returns>
         async Task<bool> ReconnectIfDiconnectedAsync(Exception error, int retryCnt, CancellationToken cancellationToken)
         {
-            if (!error.Message.Contains("Closing the stream because it has been inactive for "))
+            var needReconnect = error.Message.Contains("Closing the stream because it has been inactive for ") ||
+                error.Message.Contains("The response ended prematurely while waiting for the next frame from the server.");
+            if (!needReconnect)
                 return false;
             _NeedReconnectStream = true;
 
