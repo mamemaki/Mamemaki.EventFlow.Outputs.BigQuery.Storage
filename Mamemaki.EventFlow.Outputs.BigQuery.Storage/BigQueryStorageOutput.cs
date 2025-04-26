@@ -137,7 +137,14 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
             });
             _BackOff = new ExponentialBackOff();
 
-            _BigQueryWriteClient = BigQueryWriteClient.Create();
+            {
+                var builder = new BigQueryWriteClientBuilder();
+                // Change the keep-alive value from 60 to 50 seconds.
+                // This is because the connection sometimes drops out.
+                // However, we do not know if this is related.
+                builder.GrpcChannelOptions.WithKeepAliveTime(TimeSpan.FromSeconds(50));
+                _BigQueryWriteClient = builder.Build();
+            }
             OpenStream();
         }
 
@@ -164,14 +171,6 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
                 return;
             }
 
-            if (ex.Message.Contains("The HTTP/2 server reset the stream"))
-            {
-                // It is a stream reset error when no data sending for a while.
-                // https://github.com/grpc/grpc-node/issues/1747
-                this.healthReporter.ReportHealthy("Error ignored." + Environment.NewLine + ex.ToString());
-                return;
-            }
-
             if (message == null)
                 message = "Failed to write events to Bq";
 
@@ -192,7 +191,8 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
         async Task<bool> ReconnectIfDiconnectedAsync(Exception error, int retryCnt, CancellationToken cancellationToken)
         {
             var needReconnect = error.Message.Contains("Closing the stream because it has been inactive for ") ||
-                error.Message.Contains("The response ended prematurely while waiting for the next frame from the server.");
+                error.Message.Contains("The response ended prematurely while waiting for the next frame from the server.") ||
+                error.Message.Contains("The HTTP/2 server reset the stream");
             if (!needReconnect)
                 return false;
             _NeedReconnectStream = true;
@@ -208,7 +208,7 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
                     return true;
 
                 // Reconnect the stream
-                this.healthReporter.ReportHealthy("Reconnect the stream cause stream closed.");
+                this.healthReporter.ReportHealthy("Reconnect the stream cause stream closed." + Environment.NewLine + error.ToString());
                 CloseStream();
                 OpenStream();
                 _NeedWriteSchema = true;
