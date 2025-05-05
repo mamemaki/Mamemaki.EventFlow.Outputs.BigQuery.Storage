@@ -142,7 +142,8 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
                 // Change the keep-alive value from 60 to 50 seconds.
                 // This is because the connection sometimes drops out.
                 // However, we do not know if this is related.
-                builder.GrpcChannelOptions.WithKeepAliveTime(TimeSpan.FromSeconds(50));
+                builder.GrpcChannelOptions = Google.Api.Gax.Grpc.GrpcChannelOptions.Empty
+                    .WithKeepAliveTime(TimeSpan.FromSeconds(50));
                 _BigQueryWriteClient = builder.Build();
             }
             OpenStream();
