@@ -194,6 +194,7 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
             var needReconnect = error.Message.Contains("Closing the stream because it has been inactive for ") ||
                 error.Message.Contains("Closing the stream because server is restarted") ||
                 error.Message.Contains("The response ended prematurely while waiting for the next frame from the server.") ||
+                error.Message.Contains("Connection reset by peer") ||
                 error.Message.Contains("The HTTP/2 server reset the stream");
             if (!needReconnect)
                 return false;
