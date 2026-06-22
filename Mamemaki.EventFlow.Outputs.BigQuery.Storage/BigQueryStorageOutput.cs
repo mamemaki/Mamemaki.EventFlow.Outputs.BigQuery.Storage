@@ -195,7 +195,10 @@ namespace Mamemaki.EventFlow.Outputs.BigQuery.Storage
                 error.Message.Contains("Closing the stream because server is restarted") ||
                 error.Message.Contains("The response ended prematurely while waiting for the next frame from the server.") ||
                 error.Message.Contains("Connection reset by peer") ||
-                error.Message.Contains("The HTTP/2 server reset the stream");
+                error.Message.Contains("The HTTP/2 server reset the stream") ||
+                error.Message.Contains("StatusCode=\"DeadlineExceeded\"") ||
+                error.Message.Contains("StatusCode=\"Unavailable\"") ||
+                error.Message.Contains("StatusCode=\"ResourceExhausted\"");
             if (!needReconnect)
                 return false;
             _NeedReconnectStream = true;
